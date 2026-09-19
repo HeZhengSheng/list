@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>购物清单</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#1f2329;--sub:#7b8290;--line:#e8eaed;--primary:#111827;--soft:#f0f2f5;--green:#16865c;--red:#d64545}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:900px;margin:auto;padding:24px 16px 80px}.head{display:flex;justify-content:space-between;align-items:end;margin-bottom:18px}.head h1{margin:0;font-size:28px}.head p{margin:5px 0 0;color:var(--sub);font-size:13px}
+button,input,textarea{font:inherit}.btn{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;background:var(--primary);color:white}.btn.secondary{background:var(--soft);color:var(--text)}
+.add{display:grid;grid-template-columns:1fr 110px auto;gap:8px;background:var(--card);padding:14px;border-radius:16px;margin-bottom:16px;box-shadow:0 1px 8px #00000008}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;background:white}input:focus,textarea:focus{border-color:#9ba1aa}
+.stats{display:flex;gap:10px;margin-bottom:12px;color:var(--sub);font-size:13px}.stats span{background:white;padding:7px 10px;border-radius:20px}
+.empty{text-align:center;color:var(--sub);padding:60px 10px;background:white;border-radius:16px}
+.item{background:var(--card);border-radius:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 8px #00000008}.item-main{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px}
+.check{width:22px;height:22px;accent-color:#111827}.name{font-weight:650;font-size:16px}.meta{color:var(--sub);font-size:12px;margin-top:4px}.done .name{text-decoration:line-through;color:#9aa0aa}
+.actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.actions button{padding:7px 10px;border:0;border-radius:8px;cursor:pointer;background:var(--soft);color:var(--text)}
+.compare{border-top:1px solid var(--line);padding:14px;background:#fafbfc}.compare-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:650}.compare-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.option{background:white;border:1px solid var(--line);border-radius:12px;padding:12px}.option.best{border-color:#68b995;box-shadow:0 0 0 1px #68b995 inset}.option-head{display:flex;justify-content:space-between;gap:8px;align-items:center}.option-name{font-weight:650}.badge{font-size:11px;background:#e8f7f0;color:var(--green);padding:3px 6px;border-radius:8px}.option-info{font-size:13px;color:var(--sub);margin:7px 0;white-space:pre-wrap}.option-price{font-size:18px;font-weight:700}.option-actions{display:flex;gap:6px;margin-top:9px}.option-actions button{border:0;border-radius:7px;padding:6px 8px;cursor:pointer;background:var(--soft)}
+.modal-bg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;padding:16px;z-index:10}.modal{background:white;border-radius:18px;padding:18px;width:min(520px,100%);max-height:90vh;overflow:auto}.modal h3{margin:0 0 14px}.field{margin-bottom:11px}.field label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+@media(max-width:600px){.app{padding:16px 10px 70px}.add{grid-template-columns:1fr 80px}.add .btn{grid-column:1/-1}.compare-grid{grid-template-columns:1fr}.item-main{grid-template-columns:auto 1fr}.actions{grid-column:2;justify-content:flex-start}.head h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="head"><div><h1>购物清单</h1><p>数据保存在当前浏览器；建议定期导出 JSON 备份</p></div><div class="actions"><button class="btn secondary" onclick="exportData()">导出备份</button><button class="btn secondary" onclick="document.getElementById('importFile').click()">导入恢复</button><button class="btn secondary" onclick="clearBought()">清理已购</button><input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importData(event)"></div></div>
+<div class="add"><input id="newName" placeholder="需要购买什么？" onkeydown="if(event.key==='Enter')addItem()"><input id="newQty" placeholder="数量" value="1"><button class="btn" onclick="addItem()">＋ 添加物品</button></div>
+<div class="stats"><span id="totalStat">0 项</span><span id="todoStat">待购买 0</span><span id="doneStat">已购买 0</span></div><div id="list"></div>
+</div>
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal"><h3 id="modalTitle">添加对比方案</h3>
+<div class="field"><label>商品 / 方案名称</label><input id="opName" placeholder="例如：盒马 / 品牌A"></div>
+<div class="field"><label>价格（元）</label><input id="opPrice" type="number" step="0.01" placeholder="0.00"></div>
+<div class="field"><label>购买渠道 / 商家</label><input id="opStore" placeholder="京东、淘宝、超市等"></div>
+<div class="field"><label>链接</label><input id="opLink" placeholder="https://..."></div>
+<div class="field"><label>规格、优缺点、备注</label><textarea id="opNote" rows="4" placeholder="例如：950ml；单价更低；次日达"></textarea></div>
+<div class="modal-actions"><button class="btn secondary" onclick="closeModal()">取消</button><button class="btn" onclick="saveOption()">保存</button></div></div></div>
+<script>
+const KEY='shopping_compare_list_v1';let data=JSON.parse(localStorage.getItem(KEY)||'[]');let editItemId=null,editOptionId=null;const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function persist(){localStorage.setItem(KEY,JSON.stringify(data));render()}function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function addItem(){const name=document.getElementById('newName').value.trim(),qty=document.getElementById('newQty').value.trim()||'1';if(!name)return;data.unshift({id:uid(),name,qty,done:false,open:true,options:[]});document.getElementById('newName').value='';document.getElementById('newQty').value='1';persist()}
+function toggle(id){let x=data.find(i=>i.id===id);x.done=!x.done;persist()}function toggleCompare(id){let x=data.find(i=>i.id===id);x.open=!x.open;persist()}
+function delItem(id){if(confirm('删除这个物品及其全部对比信息？')){data=data.filter(i=>i.id!==id);persist()}}
+function editItem(id){let x=data.find(i=>i.id===id);let n=prompt('物品名称',x.name);if(n===null||!n.trim())return;let q=prompt('数量',x.qty);if(q===null)return;x.name=n.trim();x.qty=q.trim()||'1';persist()}
+function openOption(itemId,optId=null){editItemId=itemId;editOptionId=optId;let o=optId?data.find(i=>i.id===itemId).options.find(o=>o.id===optId):{};document.getElementById('modalTitle').textContent=optId?'编辑对比方案':'添加对比方案';['Name','Price','Store','Link','Note'].forEach(k=>document.getElementById('op'+k).value=o[k.toLowerCase()]||'');document.getElementById('modalBg').style.display='flex'}
+function closeModal(){document.getElementById('modalBg').style.display='none'}
+function saveOption(){let item=data.find(i=>i.id===editItemId),name=document.getElementById('opName').value.trim();if(!name)return;let val={name,price:document.getElementById('opPrice').value,store:document.getElementById('opStore').value.trim(),link:document.getElementById('opLink').value.trim(),note:document.getElementById('opNote').value.trim()};if(editOptionId)Object.assign(item.options.find(o=>o.id===editOptionId),val);else item.options.push({id:uid(),best:false,...val});closeModal();persist()}
+function best(itemId,optId){let item=data.find(i=>i.id===itemId);item.options.forEach(o=>o.best=o.id===optId);persist()}function delOption(itemId,optId){let item=data.find(i=>i.id===itemId);item.options=item.options.filter(o=>o.id!==optId);persist()}function clearBought(){if(data.some(i=>i.done)&&confirm('删除所有已购买物品？')){data=data.filter(i=>!i.done);persist()}}
+function exportData(){const payload={app:'shopping_compare_list',version:1,exportedAt:new Date().toISOString(),data};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='购物清单备份.json';a.click();URL.revokeObjectURL(url)}
+function importData(event){const file=event.target.files&&event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(){try{const parsed=JSON.parse(reader.result),incoming=Array.isArray(parsed)?parsed:parsed.data;if(!Array.isArray(incoming))throw new Error('备份格式不正确');if(!confirm('将使用备份覆盖当前数据，是否继续？'))return;data=incoming;persist();alert('恢复成功')}catch(e){alert('导入失败：'+e.message)}finally{event.target.value=''}};reader.readAsText(file,'utf-8')}
+function render(){let list=document.getElementById('list');document.getElementById('totalStat').textContent=data.length+' 项';document.getElementById('todoStat').textContent='待购买 '+data.filter(i=>!i.done).length;document.getElementById('doneStat').textContent='已购买 '+data.filter(i=>i.done).length;if(!data.length){list.innerHTML='<div class="empty">还没有物品，先添加一件需要购买的东西。</div>';return}list.innerHTML=data.map(i=>`<div class="item ${i.done?'done':''}"><div class="item-main"><input class="check" type="checkbox" ${i.done?'checked':''} onchange="toggle('${i.id}')"><div><div class="name">${esc(i.name)}</div><div class="meta">数量：${esc(i.qty)} · ${i.options.length} 个对比方案</div></div><div class="actions"><button onclick="toggleCompare('${i.id}')">${i.open?'收起':'对比'}</button><button onclick="editItem('${i.id}')">编辑</button><button onclick="delItem('${i.id}')">删除</button></div></div>${i.open?`<div class="compare"><div class="compare-title"><span>商品对比</span><button class="btn secondary" onclick="openOption('${i.id}')">＋ 添加对比</button></div><div class="compare-grid">${i.options.length?i.options.map(o=>`<div class="option ${o.best?'best':''}"><div class="option-head"><span class="option-name">${esc(o.name)}</span>${o.best?'<span class="badge">已选</span>':''}</div>${o.price?`<div class="option-price">¥${Number(o.price).toFixed(2)}</div>`:''}<div class="option-info">${o.store?'渠道：'+esc(o.store)+'\n':''}${esc(o.note)}</div>${o.link?`<div><a href="${esc(o.link)}" target="_blank" rel="noopener">打开商品链接</a></div>`:''}<div class="option-actions"><button onclick="best('${i.id}','${o.id}')">选这个</button><button onclick="openOption('${i.id}','${o.id}')">编辑</button><button onclick="delOption('${i.id}','${o.id}')">删除</button></div></div>`).join(''):'<div style="color:var(--sub);font-size:13px">还没有对比方案，可记录不同品牌、平台、价格和规格。</div>'}</div></div>`:''}</div>`).join('')}
+render();
+</script></body></html>
